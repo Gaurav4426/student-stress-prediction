@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import joblib
 import pandas as pd
 
@@ -27,50 +27,55 @@ features = [
     "prev_weekday"
 ]
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
 def home():
-    prediction = None
-    message = None
+    return render_template("index.html")
 
-    if request.method == "POST":
-        try:
-            data = {
-                "prev_avg_hrv": float(request.form["prev_avg_hrv"]),
-                "prev_hrv_coverage": float(request.form["prev_hrv_coverage"]),
-                "prev_avg_lf": float(request.form["prev_avg_lf"]),
-                "prev_avg_hf": float(request.form["prev_avg_hf"]),
-                "prev_sleep_score": float(request.form["prev_sleep_score"]),
-                "prev_deep_sleep_min": float(request.form["prev_deep_sleep_min"]),
-                "prev_total_steps": float(request.form["prev_total_steps"]),
-                "prev_avg_steps_interval": float(request.form["prev_avg_steps_interval"]),
-                "prev_avg_oxygen": float(request.form["prev_avg_oxygen"]),
-                "prev_median_oxygen": float(request.form["prev_median_oxygen"]),
-                "prev_LIGHTLY_ACTIVE": float(request.form["prev_LIGHTLY_ACTIVE"]),
-                "prev_MODERATELY_ACTIVE": float(request.form["prev_MODERATELY_ACTIVE"]),
-                "prev_SEDENTARY": float(request.form["prev_SEDENTARY"]),
-                "prev_VERY_ACTIVE": float(request.form["prev_VERY_ACTIVE"]),
-                "prev_stress": float(request.form["prev_stress"]),
-                "prev_anxiety": float(request.form["prev_anxiety"]),
-                "gap_days": float(request.form["gap_days"]),
-                "prev_weekday": request.form["prev_weekday"]
-            }
 
-            input_data = pd.DataFrame([data], columns=features)
-            result = model.predict(input_data)[0]
+@app.route("/api/predict", methods=["POST"])
+def predict_api():
+    try:
+        data = request.get_json()
 
-            if result == 1:
-                prediction = "High Stress Risk"
-            else:
-                prediction = "Low Stress Risk"
+        input_data = pd.DataFrame([{
+            "prev_avg_hrv": float(data["prev_avg_hrv"]),
+            "prev_hrv_coverage": float(data["prev_hrv_coverage"]),
+            "prev_avg_lf": float(data["prev_avg_lf"]),
+            "prev_avg_hf": float(data["prev_avg_hf"]),
+            "prev_sleep_score": float(data["prev_sleep_score"]),
+            "prev_deep_sleep_min": float(data["prev_deep_sleep_min"]),
+            "prev_total_steps": float(data["prev_total_steps"]),
+            "prev_avg_steps_interval": float(data["prev_avg_steps_interval"]),
+            "prev_avg_oxygen": float(data["prev_avg_oxygen"]),
+            "prev_median_oxygen": float(data["prev_median_oxygen"]),
+            "prev_LIGHTLY_ACTIVE": float(data["prev_LIGHTLY_ACTIVE"]),
+            "prev_MODERATELY_ACTIVE": float(data["prev_MODERATELY_ACTIVE"]),
+            "prev_SEDENTARY": float(data["prev_SEDENTARY"]),
+            "prev_VERY_ACTIVE": float(data["prev_VERY_ACTIVE"]),
+            "prev_stress": float(data["prev_stress"]),
+            "prev_anxiety": float(data["prev_anxiety"]),
+            "gap_days": float(data["gap_days"]),
+            "prev_weekday": data["prev_weekday"]
+        }], columns=features)
 
-        except Exception as e:
-            message = "Please enter valid values."
+        result = model.predict(input_data)[0]
 
-    return render_template(
-        "index.html",
-        prediction=prediction,
-        message=message
-    )
+        if result == 1:
+            prediction = "High Stress Risk"
+        else:
+            prediction = "Low Stress Risk"
+
+        return jsonify({
+            "success": True,
+            "prediction": prediction
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
 
 if __name__ == "__main__":
     app.run()
